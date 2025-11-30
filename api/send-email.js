@@ -1,15 +1,4 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ status: "error", message: "Método no permitido" });
-  }
-
-  const { userId, to, subject, body } = req.body || {};
-
-  if (!userId || !to || !subject || !body) {
-    return res.status(400).json({ status: "error", message: "Faltan campos requeridos" });
-  }
-
-  // Obtener tokens desde KV
+async function getValidAccessToken(userId) {
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
   const key = `gmail:${encodeURIComponent(userId)}`;
@@ -18,103 +7,81 @@ export default async function handler(req, res) {
     headers: { Authorization: `Bearer ${kvToken}` }
   });
 
-  const kvText = await kvRes.text();
-  let tokens;
-  try {
-    tokens = JSON.parse(kvText);
-  } catch {
-    return res.status(500).json({ status: "error", message: "KV no retornó JSON válido" });
-  }
+  const raw = await kvRes.text();
+  let tokens = JSON.parse(raw);
 
-  if (!tokens?.refresh_token) {
-    return res.status(400).json({ status: "error", message: "No existe token para este usuario" });
-  }
+  if (!tokens?.refresh_token) return null;
 
-  // Verificar expiración
-  let accessToken = tokens.access_token;
   const expired = !tokens.expiry_date || Date.now() > tokens.expiry_date;
 
-  if (expired) {
-    const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        refresh_token: tokens.refresh_token,
-        grant_type: "refresh_token"
-      })
-    });
+  if (!expired) return tokens.access_token;
 
-    const refreshData = await refreshRes.json();
+  const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: tokens.refresh_token,
+      grant_type: "refresh_token"
+    })
+  });
 
-    if (refreshData.error) {
-      return res.status(400).json({
-        status: "error",
-        message: "Error refrescando token",
-        raw: refreshData
-      });
-    }
+  const refreshData = await refreshRes.json();
+  if (refreshData.error) return null;
 
-    accessToken = refreshData.access_token;
+  const newAccess = refreshData.access_token;
 
-    // Guardar nuevo access token en KV
-    await fetch(`${kvUrl}/set/${key}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${kvToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        refresh_token: tokens.refresh_token,
-        access_token: refreshData.access_token,
-        expiry_date: Date.now() + refreshData.expires_in * 1000,
-        scope: refreshData.scope || tokens.scope,
-        token_type: "Bearer",
-        created_at: new Date().toISOString()
-      })
-    });
-  }
+  await fetch(`${kvUrl}/set/${key}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${kvToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      refresh_token: tokens.refresh_token,
+      access_token: newAccess,
+      expiry_date: Date.now() + refreshData.expires_in * 1000,
+      scope: refreshData.scope || tokens.scope,
+      token_type: "Bearer",
+      created_at: new Date().toISOString()
+    })
+  });
 
-  // Construir mensaje MIME base64
-  const message =
-    `To: ${to}\r\n` +
-    `Subject: ${subject}\r\n` +
-    `Content-Type: text/plain; charset="UTF-8"\r\n\r\n` +
-    body;
+  return newAccess;
+}
 
-  const encodedMessage = Buffer.from(message)
+export default async function handler(req, res) {
+  if (req.method !== "POST")
+    return res.status(405).json({ status: "error" });
+
+  const { userId, to, subject, body } = req.body || {};
+  if (!userId || !to || !subject || !body)
+    return res.status(400).json({ status: "error" });
+
+  const accessToken = await getValidAccessToken(userId);
+  if (!accessToken)
+    return res.status(400).json({ status: "error" });
+
+  const msg =
+    `To: ${to}\r\nSubject: ${subject}\r\n\r\n${body}`;
+
+  const encoded = Buffer.from(msg)
     .toString("base64")
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 
-  // Enviar correo usando Gmail API
-  const gmailRes = await fetch(
-    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ raw: encodedMessage })
-    }
-  );
-
-  const gmailData = await gmailRes.json();
-
-  if (!gmailRes.ok) {
-    return res.status(400).json({
-      status: "error",
-      message: "Error enviando email",
-      raw: gmailData
-    });
-  }
-
-  return res.status(200).json({
-    status: "success",
-    message: "Correo enviado",
-    id: gmailData.id
+  const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ raw: encoded })
   });
-}
+
+  const data = await r.json();
+
+  if (!r.ok)
+    return res.status(400).json({ status: "error", raw:
