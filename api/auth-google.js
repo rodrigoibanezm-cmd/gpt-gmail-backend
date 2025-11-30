@@ -3,7 +3,10 @@ export default function handler(req, res) {
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   if (!clientId || !redirectUri) {
-    return res.status(500).send("Faltan env vars");
+    return res.status(500).json({
+      status: "error",
+      message: "Faltan GOOGLE_CLIENT_ID o GOOGLE_REDIRECT_URI"
+    });
   }
 
   const { userId } = req.query;
@@ -21,7 +24,11 @@ export default function handler(req, res) {
 
   if (state) params.append("state", state);
 
-  return res.redirect(
-    `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
-  );
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+  return res.status(200).json({
+    status: "success",
+    message: "URL de autorización generada",
+    authUrl
+  });
 }
