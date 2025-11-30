@@ -1,13 +1,38 @@
+async function saveToken(userId, data) {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+
+  if (!url || !token) {
+    console.warn('KV no configurado, no se puede guardar token');
+    return;
+  }
+
+  const key = `gmail:${userId || 'default'}`;
+
+  await fetch(`${url}/set/${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      refresh_token: data.refresh_token || null,
+      access_token: data.access_token || null,
+      scope: data.scope || null,
+      token_type: data.token_type || null,
+      expiry_date: Date.now() + (data.expires_in || 0) * 1000,
+      created_at: new Date().toISOString(),
+    }),
+  });
+}
+
 export default async function handler(req, res) {
   const code = req.query.code;
   const error = req.query.error || null;
-  const state = req.query.state || null;
+  const state = req.query.state || null; // acá mandamos userId desde /api/auth-google
 
   if (error && !code) {
-    // Usuario canceló o Google devolvió error explícito
-    return res
-      .status(400)
-      .send(`Google devolvió un error: ${error}`);
+    return res.status(400).send(`Google devolvió un error: ${error}`);
   }
 
   if (!code) {
@@ -38,7 +63,6 @@ export default async function handler(req, res) {
     });
 
     const data = await tokenRes.json();
-
     console.log('OAuth token response:', data, 'state/userId:', state);
 
     if (data.error) {
@@ -46,6 +70,9 @@ export default async function handler(req, res) {
         .status(400)
         .send('Error al obtener tokens: ' + JSON.stringify(data));
     }
+
+    // guardar tokens en KV (si hay refresh_token, mejor)
+    await saveToken(state, data);
 
     return res.status(200).send(`
       <html>
