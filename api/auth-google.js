@@ -27,7 +27,10 @@ export default function handler(req, res) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly",
+    scope: [
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ].join(" "),
     access_type: "offline",
     include_granted_scopes: "true",
     prompt: "consent",
