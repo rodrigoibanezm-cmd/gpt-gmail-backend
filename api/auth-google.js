@@ -26,6 +26,5 @@ export default function handler(req, res) {
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-  // IMPORTANTE: aquí solo redirigimos a Google
   return res.redirect(authUrl);
 }
