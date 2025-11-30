@@ -8,7 +8,7 @@ export default function handler(req, res) {
       .send('Faltan GOOGLE_CLIENT_ID o GOOGLE_REDIRECT_URI en las env vars');
   }
 
-  // opcional: userId viene por query (?userId=correo)
+  // userId opcional en la query (?userId=correo)
   const { userId } = req.query;
   const state = userId ? encodeURIComponent(userId) : '';
 
@@ -26,5 +26,7 @@ export default function handler(req, res) {
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-  res.redirect(authUrl);
+  // IMPORTANTE: aquí solo redirigimos a Google
+  return res.redirect(authUrl);
 }
+
