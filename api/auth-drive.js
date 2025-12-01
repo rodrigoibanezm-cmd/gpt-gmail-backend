@@ -1,4 +1,4 @@
-export default function handler(req, res) {
+module.exports = function (req, res) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_DRIVE_REDIRECT_URI;
 
@@ -25,4 +25,4 @@ export default function handler(req, res) {
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   return res.redirect(authUrl);
-}
+};
