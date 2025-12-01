@@ -1,66 +1,126 @@
-async function getValidAccessToken(userId) {
+// /api/send-email.js
+
+async function getStoredToken(userId) {
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
-  const key = `gmail:${encodeURIComponent(userId)}`;
 
-  if (!kvUrl || !kvToken) {
+  if (!kvUrl || !kvToken || !userId) {
+    return null;
+  }
+
+  const key = `gmail:${userId}`;
+
+  const kvRes = await fetch(
+    `${kvUrl}/get/${encodeURIComponent(key)}`,
+    {
+      headers: { Authorization: `Bearer ${kvToken}` }
+    }
+  );
+
+  if (!kvRes.ok) {
+    return null;
+  }
+
+  let body;
+  try {
+    body = await kvRes.json();
+  } catch (e) {
+    return null;
+  }
+
+  const raw = body && body.result;
+  if (!raw) {
     return null;
   }
 
   try {
-    const kvRes = await fetch(`${kvUrl}/get/${key}`, {
-      headers: { Authorization: `Bearer ${kvToken}` }
-    });
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
 
-    const raw = await kvRes.text();
-    if (!raw) return null;
+async function saveToken(userId, tokenObj) {
+  const kvUrl = process.env.KV_REST_API_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN;
 
-    const tokens = JSON.parse(raw);
+  if (!kvUrl || !kvToken || !userId || !tokenObj) return;
 
-    if (!tokens?.refresh_token) return null;
+  const key = `gmail:${userId}`;
 
-    const expired = !tokens.expiry_date || Date.now() > tokens.expiry_date;
-    if (!expired && tokens.access_token) return tokens.access_token;
-
-    const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        refresh_token: tokens.refresh_token,
-        grant_type: "refresh_token"
-      })
-    });
-
-    const refreshData = await refreshRes.json();
-    if (refreshData.error || !refreshData.access_token) {
-      return null;
-    }
-
-    const newAccessToken = refreshData.access_token;
-
-    await fetch(`${kvUrl}/set/${key}`, {
+  await fetch(
+    `${kvUrl}/set/${encodeURIComponent(key)}`,
+    {
       method: "POST",
       headers: {
         Authorization: `Bearer ${kvToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        refresh_token: tokens.refresh_token,
-        access_token: newAccessToken,
-        expiry_date: Date.now() + (refreshData.expires_in || 0) * 1000,
-        scope: refreshData.scope || tokens.scope,
-        token_type: "Bearer",
-        created_at: new Date().toISOString()
-      })
-    });
+      body: JSON.stringify(tokenObj)
+    }
+  );
+}
 
-    return newAccessToken;
-  } catch (e) {
-    console.error("getValidAccessToken error", e);
+async function getValidAccessToken(userId) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) return null;
+
+  const stored = await getStoredToken(userId);
+  if (!stored || !stored.refresh_token) {
     return null;
   }
+
+  const now = Date.now();
+  const safetyMarginMs = 60_000;
+
+  if (
+    stored.access_token &&
+    typeof stored.expiry_date === "number" &&
+    stored.expiry_date - safetyMarginMs > now
+  ) {
+    return stored.access_token;
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: "refresh_token",
+    refresh_token: stored.refresh_token
+  });
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString()
+  });
+
+  let data;
+  try {
+    data = await tokenRes.json();
+  } catch (e) {
+    return null;
+  }
+
+  if (!tokenRes.ok || !data.access_token) {
+    return null;
+  }
+
+  const expiresIn = typeof data.expires_in === "number" ? data.expires_in : 3500;
+
+  const updated = {
+    refresh_token: stored.refresh_token,
+    access_token: data.access_token,
+    scope: data.scope || stored.scope || null,
+    token_type: data.token_type || stored.token_type || "Bearer",
+    expiry_date: now + expiresIn * 1000,
+    created_at: stored.created_at || new Date().toISOString()
+  };
+
+  await saveToken(userId, updated);
+
+  return data.access_token;
 }
 
 export default async function handler(req, res) {
@@ -116,21 +176,26 @@ export default async function handler(req, res) {
       }
     );
 
-    const gmailData = await gmailRes.json();
+    let gmailData;
+    try {
+      gmailData = await gmailRes.json();
+    } catch (e) {
+      gmailData = null;
+    }
 
     if (!gmailRes.ok) {
       console.error("Gmail send error", gmailData);
       return res.status(200).json({
         status: "error",
         message: "Error enviando correo con Gmail API",
-        data: null
+        data: gmailData
       });
     }
 
     return res.status(200).json({
       status: "success",
       message: "Correo enviado correctamente",
-      data: { id: gmailData.id || null }
+      data: { id: gmailData && gmailData.id ? gmailData.id : null }
     });
   } catch (error) {
     console.error("send-email handler error", error);
@@ -141,3 +206,4 @@ export default async function handler(req, res) {
     });
   }
 }
+
