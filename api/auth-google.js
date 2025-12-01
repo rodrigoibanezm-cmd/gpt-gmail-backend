@@ -2,7 +2,6 @@ export default function handler(req, res) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
-  // Validar env vars
   if (!clientId || !redirectUri) {
     return res.status(200).json({
       status: "error",
@@ -11,9 +10,9 @@ export default function handler(req, res) {
     });
   }
 
-  // userId requerido según schema
   const { userId } = req.query;
-  if (!userId) {
+
+  if (!userId || typeof userId !== "string") {
     return res.status(200).json({
       status: "error",
       message: "Falta parámetro userId",
@@ -21,20 +20,21 @@ export default function handler(req, res) {
     });
   }
 
-  const state = encodeURIComponent(userId);
+  const scope = [
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.readonly"
+  ].join(" ");
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: [
-      "https://www.googleapis.com/auth/gmail.send",
-      "https://www.googleapis.com/auth/gmail.readonly"
-    ].join(" "),
+    scope,
     access_type: "offline",
     include_granted_scopes: "true",
     prompt: "consent",
-    state
+    // OJO: ahora el state es el userId tal cual, sin encode manual
+    state: userId
   });
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
