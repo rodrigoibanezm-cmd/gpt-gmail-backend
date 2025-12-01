@@ -52,25 +52,4 @@ export default async function handler(req, res) {
 
     const data = await tokenResponse.json();
 
-    if (!tokenResponse.ok) {
-      console.error('Error al obtener tokens de Drive:', data);
-      return res
-        .status(500)
-        .send('Error al obtener tokens de Drive: ' + JSON.stringify(data));
-    }
-
-    await saveDriveToken(state, data);
-
-    return res.status(200).send(`
-      <html>
-        <body>
-          <h1>Drive conectado correctamente</h1>
-          <p>Puedes cerrar esta pestaña.</p>
-        </body>
-      </html>
-    `);
-  } catch (err) {
-    console.error('Error en callback OAuth de Drive:', err);
-    return res.status(500).send('Error interno en callback OAuth de Drive');
-  }
-}
+    if (!tokenResponse.ok
