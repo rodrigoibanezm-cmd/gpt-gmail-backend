@@ -40,12 +40,13 @@ module.exports = async function (req, res) {
       });
     }
 
-    const tokenDataRaw = await kvResponse.text();
-    let tokenData;
+    // Upstash devuelve: { "result": "<string-json>" }
+    const kvJson = await kvResponse.json();
+    let tokenData = {};
     try {
-      tokenData = JSON.parse(tokenDataRaw || '{}');
+      tokenData = JSON.parse(kvJson.result || '{}');
     } catch (e) {
-      console.error('JSON inválido en KV Drive:', tokenDataRaw);
+      console.error('JSON inválido en KV Drive:', kvJson);
       return res.status(500).json({
         status: 'error',
         message: 'Formato de token de Drive inválido en KV'
