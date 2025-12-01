@@ -5,41 +5,31 @@ export default function handler(req, res) {
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   if (!clientId || !redirectUri) {
-    return res.status(500).json({
-      status: "error",
-      message:
-        "Faltan GOOGLE_CLIENT_ID o GOOGLE_REDIRECT_URI en las variables de entorno.",
-      data: null
-    });
+    return res
+      .status(500)
+      .send('Faltan GOOGLE_CLIENT_ID o GOOGLE_REDIRECT_URI en las env vars');
   }
 
-  const { userId } = req.query || {};
-  const state = userId || "test_user@example.com";
+  const { userId } = req.query;
+  const state = userId ? encodeURIComponent(userId) : '';
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    response_type: "code",
-    scope:
-      "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly",
-    access_type: "offline",
-    include_granted_scopes: "true",
-    prompt: "consent"
+    response_type: 'code',
+    scope: [
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/drive.readonly'
+    ].join(' '),
+    access_type: 'offline',
+    include_granted_scopes: 'true',
+    prompt: 'consent'
   });
 
-  if (state) {
-    // state SIN encodeURIComponent; URLSearchParams se encarga del encode
-    params.append("state", state);
-  }
+  if (state) params.append('state', state);
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-
-  return res.status(200).json({
-    status: "success",
-    message: "URL de autorización generada correctamente",
-    data: {
-      authUrl,
-      userId: state
-    }
-  });
+  return res.redirect(authUrl);
 }
