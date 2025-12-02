@@ -1,17 +1,17 @@
-import { pipedriveRequest } from "../../lib/pipedriveClient";
+const { pipedriveRequest } = require("../lib/pipedriveClient");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ status: "error", message: "Method not allowed" });
+    return res
+      .status(405)
+      .json({ status: "error", message: "Method not allowed" });
   }
 
   const { action, dealId, stageId, activityData, noteText } = req.body || {};
 
   try {
     switch (action) {
-      /* ------------------------------------------- */
-      /* 1) LISTAR DEALS                             */
-      /* ------------------------------------------- */
+      // 1) LISTAR DEALS
       case "listDeals": {
         const r = await pipedriveRequest("GET", "/deals", {
           query: { status: "open" },
@@ -19,9 +19,7 @@ export default async function handler(req, res) {
         return res.status(200).json(r);
       }
 
-      /* ------------------------------------------- */
-      /* 2) MOVER DEAL DE ETAPA                      */
-      /* ------------------------------------------- */
+      // 2) MOVER DEAL DE ETAPA
       case "moveDealStage": {
         if (!dealId || !stageId) {
           return res
@@ -34,15 +32,12 @@ export default async function handler(req, res) {
         return res.status(200).json(r);
       }
 
-      /* ------------------------------------------- */
-      /* 3) CREAR ACTIVIDAD                          */
-      /* ------------------------------------------- */
+      // 3) CREAR ACTIVIDAD
       case "createActivity": {
         if (!activityData) {
-          return res.status(400).json({
-            status: "error",
-            message: "activityData requerido",
-          });
+          return res
+            .status(400)
+            .json({ status: "error", message: "activityData requerido" });
         }
         const r = await pipedriveRequest("POST", "/activities", {
           body: activityData,
@@ -50,11 +45,9 @@ export default async function handler(req, res) {
         return res.status(200).json(r);
       }
 
-      /* ------------------------------------------- */
-      /* 4) MARCAR ACTIVIDAD COMO HECHA              */
-      /* ------------------------------------------- */
+      // 4) MARCAR ACTIVIDAD COMO HECHA
       case "markActivityDone": {
-        if (!activityData?.activityId) {
+        if (!activityData || !activityData.activityId) {
           return res.status(400).json({
             status: "error",
             message: "activityId requerido",
@@ -68,9 +61,7 @@ export default async function handler(req, res) {
         return res.status(200).json(r);
       }
 
-      /* ------------------------------------------- */
-      /* 5) CREAR NOTA                               */
-      /* ------------------------------------------- */
+      // 5) CREAR NOTA
       case "addNote": {
         if (!dealId || !noteText) {
           return res.status(400).json({
@@ -87,13 +78,11 @@ export default async function handler(req, res) {
         return res.status(200).json(r);
       }
 
-      /* ------------------------------------------- */
-      /* ACCIÓN NO RECONOCIDA                        */
-      /* ------------------------------------------- */
+      // ACCION DESCONOCIDA
       default:
         return res.status(400).json({
           status: "error",
-          message: `Acción desconocida: ${action}`,
+          message: `Accion desconocida:${action}`,
         });
     }
   } catch (err) {
@@ -102,4 +91,4 @@ export default async function handler(req, res) {
       message: err.message || "Error interno en pipedrive.js",
     });
   }
-}
+};
