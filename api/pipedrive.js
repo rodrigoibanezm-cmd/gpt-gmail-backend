@@ -11,26 +11,26 @@ module.exports = async (req, res) => {
 
   try {
     switch (action) {
-case "listDeals": {
-  const limit =
-    typeof req.body?.limit === "number" && req.body.limit > 0
-      ? req.body.limit
-      : 50;
+      case "listDeals": {
+        const limit =
+          typeof req.body?.limit === "number" && req.body.limit > 0
+            ? req.body.limit
+            : 50;
 
-  const status =
-    typeof req.body?.status === "string" && req.body.status.length > 0
-      ? req.body.status
-      : "open";
+        const status =
+          typeof req.body?.status === "string" && req.body.status.length > 0
+            ? req.body.status
+            : "open";
 
-  const r = await pipedriveRequest("GET", "/deals", {
-    query: {
-      status,
-      limit
-    },
-  });
+        const r = await pipedriveRequest("GET", "/deals", {
+          query: {
+            status,
+            limit,
+          },
+        });
 
-  return res.status(200).json(r);
-}
+        return res.status(200).json(r);
+      }
 
       case "moveDealStage": {
         if (!dealId || !stageId) {
@@ -88,6 +88,84 @@ case "listDeals": {
           },
         });
         return res.status(200).json(r);
+      }
+
+      // ANALISIS EJECUTIVO DEL PIPELINE
+      case "analyzePipeline": {
+        let allDeals = [];
+        let start = 0;
+        const pageSize = 200;
+        const maxLoops = 5; // hasta ~1000 deals
+
+        for (let i = 0; i < maxLoops; i++) {
+          const r = await pipedriveRequest("GET", "/deals", {
+            query: {
+              status: "open",
+              limit: pageSize,
+              start,
+            },
+          });
+
+          if (r.status !== "success" || !Array.isArray(r.data)) {
+            break;
+          }
+
+          allDeals = allDeals.concat(r.data);
+
+          if (r.data.length < pageSize) {
+            break; // ultima pagina
+          }
+
+          start += pageSize;
+        }
+
+        const totalAbiertos = allDeals.length;
+        const grandes = allDeals.filter((d) => (d.value || 0) >= 5000000);
+
+        const hoy = new Date();
+        const calcDias = (fecha) => {
+          if (!fecha) return null;
+          const f = new Date(fecha);
+          return Math.floor((hoy - f) / (1000 * 60 * 60 * 24));
+        };
+
+        const grandesEnRiesgo = grandes
+          .map((d) => {
+            const dias = calcDias(d.update_time);
+            return { id: d.id, titulo: d.title, valor: d.value, dias };
+          })
+          .filter((d) => d.dias !== null && d.dias >= 10)
+          .sort((a, b) => b.valor - a.valor);
+
+        const montoEnRiesgo = grandesEnRiesgo.reduce(
+          (acc, d) => acc + (d.valor || 0),
+          0
+        );
+
+        const redflags = [];
+        if (grandesEnRiesgo.length > 0)
+          redflags.push("Oportunidades grandes sin actividad reciente");
+        if (totalAbiertos > 100)
+          redflags.push("Pipeline muy grande sin segmentacion");
+        if (grandes.length > 0 && grandesEnRiesgo.length / grandes.length >= 0.5)
+          redflags.push(
+            "Mas del 50% de las oportunidades grandes estan en riesgo"
+          );
+
+        const topRedflags = redflags.slice(0, 3);
+
+        return res.status(200).json({
+          status: "success",
+          message: "OK",
+          data: {
+            total_abiertos: totalAbiertos,
+            total_grandes: grandes.length,
+            grandes_en_riesgo: grandesEnRiesgo.length,
+            monto_en_riesgo: montoEnRiesgo,
+            oportunidades_criticas: grandesEnRiesgo.slice(0, 5),
+            top_redflags: topRedflags,
+          },
+        });
       }
 
       default:
