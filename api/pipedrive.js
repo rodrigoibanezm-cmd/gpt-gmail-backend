@@ -11,12 +11,26 @@ module.exports = async (req, res) => {
 
   try {
     switch (action) {
-      case "listDeals": {
-        const r = await pipedriveRequest("GET", "/deals", {
-          query: { status: "open" },
-        });
-        return res.status(200).json(r);
-      }
+case "listDeals": {
+  const limit =
+    typeof req.body?.limit === "number" && req.body.limit > 0
+      ? req.body.limit
+      : 50;
+
+  const status =
+    typeof req.body?.status === "string" && req.body.status.length > 0
+      ? req.body.status
+      : "open";
+
+  const r = await pipedriveRequest("GET", "/deals", {
+    query: {
+      status,
+      limit
+    },
+  });
+
+  return res.status(200).json(r);
+}
 
       case "moveDealStage": {
         if (!dealId || !stageId) {
