@@ -11,7 +11,6 @@ module.exports = async (req, res) => {
 
   try {
     switch (action) {
-      // 1) LISTAR DEALS
       case "listDeals": {
         const r = await pipedriveRequest("GET", "/deals", {
           query: { status: "open" },
@@ -19,7 +18,6 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
-      // 2) MOVER DEAL DE ETAPA
       case "moveDealStage": {
         if (!dealId || !stageId) {
           return res
@@ -32,7 +30,6 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
-      // 3) CREAR ACTIVIDAD
       case "createActivity": {
         if (!activityData) {
           return res
@@ -45,7 +42,6 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
-      // 4) MARCAR ACTIVIDAD COMO HECHA
       case "markActivityDone": {
         if (!activityData || !activityData.activityId) {
           return res.status(400).json({
@@ -56,12 +52,14 @@ module.exports = async (req, res) => {
         const r = await pipedriveRequest(
           "PUT",
           `/activities/${activityData.activityId}`,
-          { query: { done: 1 } }
+          {
+            query: { done: 1 },
+            body: { done: 1 },
+          }
         );
         return res.status(200).json(r);
       }
 
-      // 5) CREAR NOTA
       case "addNote": {
         if (!dealId || !noteText) {
           return res.status(400).json({
@@ -78,7 +76,6 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
-      // ACCION DESCONOCIDA
       default:
         return res.status(400).json({
           status: "error",
