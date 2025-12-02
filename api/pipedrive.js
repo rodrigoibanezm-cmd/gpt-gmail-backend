@@ -11,6 +11,9 @@ module.exports = async (req, res) => {
 
   try {
     switch (action) {
+      // ------------------------------------------------
+      // LISTAR DEALS (para usos controlados)
+      // ------------------------------------------------
       case "listDeals": {
         const limit =
           typeof req.body?.limit === "number" && req.body.limit > 0
@@ -32,6 +35,48 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
+      // ------------------------------------------------
+      // BUSCAR DEALS POR TEXTO (para usar nombres, incluso parciales)
+      // ------------------------------------------------
+      case "searchDeals": {
+        const term = req.body?.term;
+        if (!term) {
+          return res.status(400).json({
+            status: "error",
+            message: "term requerido",
+          });
+        }
+
+        const r = await pipedriveRequest("GET", "/deals", {
+          query: {
+            term,
+            limit: 10,
+          },
+        });
+
+        if (r.status !== "success" || !Array.isArray(r.data)) {
+          return res.status(200).json({
+            status: "success",
+            message: "Sin resultados",
+            data: [],
+          });
+        }
+
+        const results = r.data.map((d) => ({
+          id: d.id,
+          title: d.title,
+        }));
+
+        return res.status(200).json({
+          status: "success",
+          message: "OK",
+          data: results,
+        });
+      }
+
+      // ------------------------------------------------
+      // MOVER DEAL DE ETAPA
+      // ------------------------------------------------
       case "moveDealStage": {
         if (!dealId || !stageId) {
           return res
@@ -44,6 +89,9 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
+      // ------------------------------------------------
+      // CREAR ACTIVIDAD (llamada, visita, tarea)
+      // ------------------------------------------------
       case "createActivity": {
         if (!activityData) {
           return res
@@ -56,6 +104,9 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
+      // ------------------------------------------------
+      // MARCAR ACTIVIDAD COMO HECHA
+      // ------------------------------------------------
       case "markActivityDone": {
         if (!activityData || !activityData.activityId) {
           return res.status(400).json({
@@ -74,6 +125,9 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
+      // ------------------------------------------------
+      // CREAR NOTA EN UN DEAL
+      // ------------------------------------------------
       case "addNote": {
         if (!dealId || !noteText) {
           return res.status(400).json({
@@ -90,7 +144,9 @@ module.exports = async (req, res) => {
         return res.status(200).json(r);
       }
 
+      // ------------------------------------------------
       // ANALISIS EJECUTIVO DEL PIPELINE
+      // ------------------------------------------------
       case "analyzePipeline": {
         let allDeals = [];
         let start = 0;
@@ -168,6 +224,9 @@ module.exports = async (req, res) => {
         });
       }
 
+      // ------------------------------------------------
+      // ACCION DESCONOCIDA
+      // ------------------------------------------------
       default:
         return res.status(400).json({
           status: "error",
