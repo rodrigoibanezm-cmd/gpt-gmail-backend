@@ -1,4 +1,4 @@
-import { pipedriveRequest } from "/../lib/pipedriveClient";
+import { pipedriveRequest } from "../lib/pipedriveClient";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
