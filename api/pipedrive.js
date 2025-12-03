@@ -22,7 +22,8 @@ module.exports = async (req, res) => {
     return res.status(405).json({ status: "error", message: "Method not allowed" });
   }
 
-  const { action, dealId, stageId, activityData, noteText, limit, status, term, fields } = req.body || {};
+  const { action, dealId, stageId, activityData, noteText, limit, status, term } = req.body || {};
+  let fields = req.body?.fields || ["id", "title"];
 
   try {
     switch (action) {
@@ -30,16 +31,21 @@ module.exports = async (req, res) => {
       case "listDeals": {
         const limitVal = limit || 50;
         const statusVal = status || "open";
+
+        // Forzar incluir stage_id si se pidió stage_name
+        if (fields.includes("stage_name") && !fields.includes("stage_id")) {
+          fields.push("stage_id");
+        }
+
         const r = await pipedriveRequest("GET", "/deals", {
           query: { status: statusVal, limit: limitVal }
         });
 
-        const allowedFields = Array.isArray(fields) && fields.length > 0 ? fields : ["id", "title"];
-        const stageMap = allowedFields.includes("stage_id") ? await getStageMap() : {};
+        const stageMap = fields.includes("stage_id") ? await getStageMap() : {};
 
         const slimDeals = (r.data || []).map(deal => {
           const clean = {};
-          for (const k of allowedFields) {
+          for (const k of fields) {
             clean[k] = deal[k] ?? null;
           }
           if ("stage_id" in clean) {
@@ -152,3 +158,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ status: "error", message: err.message || "Error interno pipedrive.js" });
   }
 };
+
