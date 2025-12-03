@@ -1,5 +1,22 @@
 const { pipedriveRequest } = require("../lib/pipedriveClient");
 
+async function getStageMap() {
+  try {
+    const r = await pipedriveRequest("GET", "/stages", {});
+    const stages = r.data || [];
+
+    const stageMap = {};
+    for (const s of stages) {
+      stageMap[s.id] = s.name;
+    }
+
+    return stageMap;
+  } catch (err) {
+    console.error("Error obteniendo stages:", err.message);
+    return {};
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ status: "error", message: "Method not allowed" });
@@ -13,15 +30,21 @@ module.exports = async (req, res) => {
       case "listDeals": {
         const limitVal = limit || 50;
         const statusVal = status || "open";
-
         const r = await pipedriveRequest("GET", "/deals", {
           query: { status: statusVal, limit: limitVal }
         });
 
         const allowedFields = Array.isArray(fields) && fields.length > 0 ? fields : ["id", "title"];
+        const stageMap = allowedFields.includes("stage_id") ? await getStageMap() : {};
+
         const slimDeals = (r.data || []).map(deal => {
           const clean = {};
-          for (const k of allowedFields) clean[k] = deal[k] ?? null;
+          for (const k of allowedFields) {
+            clean[k] = deal[k] ?? null;
+          }
+          if ("stage_id" in clean) {
+            clean["stage_name"] = stageMap[clean.stage_id] || "—";
+          }
           return clean;
         });
 
