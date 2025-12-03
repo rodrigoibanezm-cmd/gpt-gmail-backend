@@ -1,4 +1,5 @@
 const { pipedriveRequest } = require("../lib/pipedriveClient");
+const { parseISO, isThisWeek } = require("date-fns");
 
 async function getStageMap() {
   try {
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ status: "error", message: "Method not allowed" });
   }
 
-  const { action, dealId, stageId, activityData, noteText, limit, status, term, dealData } = req.body || {};
+  const { action, dealId, stageId, activityData, noteText, limit, status, term, dealData, filter } = req.body || {};
   let fields = req.body?.fields || ["id", "title"];
 
   try {
@@ -31,11 +32,18 @@ module.exports = async (req, res) => {
         if (fields.includes("stage_name") && !fields.includes("stage_id")) {
           fields.push("stage_id");
         }
+        if (!fields.includes("add_time")) fields.push("add_time");
         const r = await pipedriveRequest("GET", "/deals", {
-          query: { status: statusVal, limit: limitVal }
+          query: { status: statusVal, limit: 100 }
         });
         const stageMap = fields.includes("stage_id") ? await getStageMap() : {};
-        const slimDeals = (r.data || []).map(deal => {
+        let allDeals = r.data || [];
+
+        if (filter === "createdThisWeek") {
+          allDeals = allDeals.filter(d => isThisWeek(parseISO(d.add_time)));
+        }
+
+        const slimDeals = allDeals.slice(0, limitVal).map(deal => {
           const clean = {};
           for (const k of fields) {
             clean[k] = deal[k] ?? null;
@@ -155,4 +163,3 @@ module.exports = async (req, res) => {
     return res.status(500).json({ status: "error", message: err.message || "Error interno pipedrive.js" });
   }
 };
-
