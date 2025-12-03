@@ -20,12 +20,11 @@ module.exports = async (req, res) => {
     return res.status(405).json({ status: "error", message: "Method not allowed" });
   }
 
-  const { action, dealId, stageId, activityData, noteText, limit, status, term } = req.body || {};
+  const { action, dealId, stageId, activityData, noteText, limit, status, term, dealData } = req.body || {};
   let fields = req.body?.fields || ["id", "title"];
 
   try {
     switch (action) {
-
       case "listDeals": {
         const limitVal = limit || 50;
         const statusVal = status || "open";
@@ -47,6 +46,18 @@ module.exports = async (req, res) => {
           return clean;
         });
         return res.status(200).json({ status: "success", data: slimDeals });
+      }
+
+      case "createDeal": {
+        if (!dealData?.title) return res.status(400).json({ status: "error", message: "title requerido" });
+        const r = await pipedriveRequest("POST", "/deals", { body: dealData });
+        return res.status(200).json({ status: "success", data: r?.data });
+      }
+
+      case "updateDeal": {
+        if (!dealId || !dealData) return res.status(400).json({ status: "error", message: "dealId y dealData requeridos" });
+        const r = await pipedriveRequest("PUT", `/deals/${dealId}`, { body: dealData });
+        return res.status(200).json({ status: "success", data: r?.data });
       }
 
       case "getDealActivities": {
@@ -140,8 +151,8 @@ module.exports = async (req, res) => {
       default:
         return res.status(400).json({ status: "error", message: `Accion desconocida: ${action}` });
     }
-
   } catch (err) {
     return res.status(500).json({ status: "error", message: err.message || "Error interno pipedrive.js" });
   }
 };
+
