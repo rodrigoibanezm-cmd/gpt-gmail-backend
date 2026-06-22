@@ -25,7 +25,9 @@ export default function handler(req, res) {
     response_type: "code",
     scope: [
       "https://www.googleapis.com/auth/gmail.send",
-      "https://www.googleapis.com/auth/gmail.readonly"
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/drive.readonly"
     ].join(" "),
     access_type: "offline",
     include_granted_scopes: "true",
