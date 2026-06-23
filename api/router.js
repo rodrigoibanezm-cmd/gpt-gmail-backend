@@ -2,6 +2,10 @@ import { searchGmail } from "../lib/gmailSearch.js";
 import { countGmailSearch } from "../lib/gmailCount.js";
 import { searchGmailAll } from "../lib/gmailSearchAll.js";
 import { getGmailMessage } from "../lib/gmailMessage.js";
+import { getGmailProfile } from "../lib/gmailProfile.js";
+import { searchGmailSent } from "../lib/gmailSent.js";
+import { getGmailThread } from "../lib/gmailThread.js";
+import { getSetupProfile, saveSetupProfile } from "../lib/setupProfile.js";
 
 function sendSuccess(res, tool, data) {
   return res.status(200).json({ status: "success", tool, data });
@@ -25,6 +29,12 @@ export default async function handler(req, res) {
   if (!userId) return sendError(res, tool, "Falta userId.");
 
   try {
+    if (tool === "gmail.profile.get") {
+      const result = await getGmailProfile(userId);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
     if (tool === "gmail.search") {
       const result = await searchGmail(userId, params);
       if (!result.ok) return sendError(res, tool, result.message);
@@ -43,8 +53,32 @@ export default async function handler(req, res) {
       return sendSuccess(res, tool, result);
     }
 
+    if (tool === "gmail.sent.search") {
+      const result = await searchGmailSent(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
     if (tool === "gmail.message.get") {
       const result = await getGmailMessage(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "gmail.thread.get") {
+      const result = await getGmailThread(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "setup.profile.get") {
+      const result = await getSetupProfile(userId);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "setup.profile.save") {
+      const result = await saveSetupProfile(userId, params);
       if (!result.ok) return sendError(res, tool, result.message);
       return sendSuccess(res, tool, result);
     }
