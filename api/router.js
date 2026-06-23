@@ -1,5 +1,6 @@
 import { searchGmail } from "../lib/gmailSearch.js";
 import { countGmailSearch } from "../lib/gmailCount.js";
+import { searchGmailAll } from "../lib/gmailSearchAll.js";
 
 function sendSuccess(res, tool, data) {
   return res.status(200).json({ status: "success", tool, data });
@@ -7,18 +8,6 @@ function sendSuccess(res, tool, data) {
 
 function sendError(res, tool, message) {
   return res.status(200).json({ status: "error", tool, message, data: null });
-}
-
-async function handleGmailSearch(res, userId, params) {
-  const result = await searchGmail(userId, params);
-  if (!result.ok) return sendError(res, "gmail.search", result.message);
-  return sendSuccess(res, "gmail.search", result);
-}
-
-async function handleGmailSearchCount(res, userId, params) {
-  const result = await countGmailSearch(userId, params);
-  if (!result.ok) return sendError(res, "gmail.search.count", result.message);
-  return sendSuccess(res, "gmail.search.count", result);
 }
 
 export default async function handler(req, res) {
@@ -36,11 +25,21 @@ export default async function handler(req, res) {
 
   try {
     if (tool === "gmail.search") {
-      return handleGmailSearch(res, userId, params);
+      const result = await searchGmail(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
     }
 
     if (tool === "gmail.search.count") {
-      return handleGmailSearchCount(res, userId, params);
+      const result = await countGmailSearch(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "gmail.search.all") {
+      const result = await searchGmailAll(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
     }
 
     return sendError(res, tool, "Tool no soportada.");
