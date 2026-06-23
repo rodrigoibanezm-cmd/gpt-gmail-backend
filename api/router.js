@@ -1,6 +1,7 @@
 import { searchGmail } from "../lib/gmailSearch.js";
 import { countGmailSearch } from "../lib/gmailCount.js";
 import { searchGmailAll } from "../lib/gmailSearchAll.js";
+import { getGmailMessage } from "../lib/gmailMessage.js";
 
 function sendSuccess(res, tool, data) {
   return res.status(200).json({ status: "success", tool, data });
@@ -38,6 +39,12 @@ export default async function handler(req, res) {
 
     if (tool === "gmail.search.all") {
       const result = await searchGmailAll(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "gmail.message.get") {
+      const result = await getGmailMessage(userId, params);
       if (!result.ok) return sendError(res, tool, result.message);
       return sendSuccess(res, tool, result);
     }
