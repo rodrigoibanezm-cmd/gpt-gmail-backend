@@ -5,6 +5,7 @@ import { getGmailMessage } from "../lib/gmailMessage.js";
 import { getGmailProfile } from "../lib/gmailProfile.js";
 import { searchGmailSent } from "../lib/gmailSent.js";
 import { getGmailThread } from "../lib/gmailThread.js";
+import { exportGmailDiscovery } from "../lib/gmailDiscoveryExport.js";
 import { getSetupProfile, saveSetupProfile } from "../lib/setupProfile.js";
 
 function sendSuccess(res, tool, data) {
@@ -55,6 +56,12 @@ export default async function handler(req, res) {
 
     if (tool === "gmail.sent.search") {
       const result = await searchGmailSent(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "gmail.discovery.export") {
+      const result = await exportGmailDiscovery(userId, params);
       if (!result.ok) return sendError(res, tool, result.message);
       return sendSuccess(res, tool, result);
     }
