@@ -1,4 +1,5 @@
 import { searchGmail } from "../lib/gmailSearch.js";
+import { countGmailSearch } from "../lib/gmailCount.js";
 
 function sendSuccess(res, tool, data) {
   return res.status(200).json({ status: "success", tool, data });
@@ -12,6 +13,12 @@ async function handleGmailSearch(res, userId, params) {
   const result = await searchGmail(userId, params);
   if (!result.ok) return sendError(res, "gmail.search", result.message);
   return sendSuccess(res, "gmail.search", result);
+}
+
+async function handleGmailSearchCount(res, userId, params) {
+  const result = await countGmailSearch(userId, params);
+  if (!result.ok) return sendError(res, "gmail.search.count", result.message);
+  return sendSuccess(res, "gmail.search.count", result);
 }
 
 export default async function handler(req, res) {
@@ -30,6 +37,10 @@ export default async function handler(req, res) {
   try {
     if (tool === "gmail.search") {
       return handleGmailSearch(res, userId, params);
+    }
+
+    if (tool === "gmail.search.count") {
+      return handleGmailSearchCount(res, userId, params);
     }
 
     return sendError(res, tool, "Tool no soportada.");
