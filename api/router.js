@@ -7,6 +7,7 @@ import { searchGmailSent } from "../lib/gmailSent.js";
 import { getGmailThread } from "../lib/gmailThread.js";
 import { exportGmailDiscovery } from "../lib/gmailDiscoveryExport.js";
 import { getSetupProfile, saveSetupProfile } from "../lib/setupProfile.js";
+import { upsertPressureCards } from "../lib/pressureCards.js";
 
 function sendSuccess(res, tool, data) {
   return res.status(200).json({ status: "success", tool, data });
@@ -16,6 +17,17 @@ function sendError(res, tool, message) {
   return res.status(200).json({ status: "error", tool, message, data: null });
 }
 
+function getParams(body) {
+  const params = body.params && typeof body.params === "object" ? body.params : {};
+  return {
+    ...params,
+    tenant_id: body.tenant_id ?? params.tenant_id,
+    tenantId: body.tenantId ?? params.tenantId,
+    user_id: body.user_id ?? params.user_id,
+    cards: body.cards ?? params.cards
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return sendError(res, null, "Metodo no permitido. Usa POST.");
@@ -23,8 +35,8 @@ export default async function handler(req, res) {
 
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const tool = body.tool || body.action;
-  const userId = body.userId;
-  const params = body.params || {};
+  const userId = body.userId || body.user_id;
+  const params = getParams(body);
 
   if (!tool) return sendError(res, null, "Falta tool.");
   if (!userId) return sendError(res, tool, "Falta userId.");
@@ -86,6 +98,12 @@ export default async function handler(req, res) {
 
     if (tool === "setup.profile.save") {
       const result = await saveSetupProfile(userId, params);
+      if (!result.ok) return sendError(res, tool, result.message);
+      return sendSuccess(res, tool, result);
+    }
+
+    if (tool === "pressure.cards.upsert") {
+      const result = await upsertPressureCards(userId, params);
       if (!result.ok) return sendError(res, tool, result.message);
       return sendSuccess(res, tool, result);
     }
