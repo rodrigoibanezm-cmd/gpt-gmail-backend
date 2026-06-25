@@ -1,1 +1,260 @@
-test
+openapi: 3.1.0
+info:
+  title: GPT Gmail Backend Router
+  version: 1.1.0
+  description: Final GPT Action schema for Gmail discovery, Gmail tools, setup profile, and PressureBoard cards.
+servers:
+  - url: https://gpt-gmail-backend.vercel.app
+paths:
+  /api/router:
+    post:
+      operationId: routeGmailTool
+      summary: Route Gmail, setup profile, and PressureBoard actions through one backend endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouterRequest'
+            examples:
+              gmailDiscoveryBatch:
+                value:
+                  action: gmail.discovery.batch
+                  userId: carolina
+                  params:
+                    days: 60
+                    includeInbox: true
+                    includeSent: true
+                    maxThreads: 50
+                    cursor: null
+                    mode: thread_compact
+              gmailThreadGet:
+                value:
+                  action: gmail.thread.get
+                  userId: carolina
+                  params:
+                    threadId: thread_xxx
+                    maxMessages: 10
+                    maxBodyChars: 8000
+              pressureCardsUpsert:
+                value:
+                  action: pressure.cards.upsert
+                  userId: carolina
+                  tenant_id: carolina
+                  user_id: carolina
+                  cards:
+                    - card_key: ripley-vitrina-sin-electricidad
+                      dimension: sos
+                      bucket: sos
+                      title: Vitrina Ripley sigue sin electricidad
+                      subtitle: Bloqueo operativo abierto
+                      summary: La tienda sigue sin energía para la vitrina de mascarillas.
+                      why_it_matters: Si Carolina no lo ve, el bloqueo sigue abierto y la tienda opera sin solución visible.
+                      what_to_do: Pedir fecha concreta de solución y responsable.
+                      severity: high
+                      payload:
+                        ignore_cost: high
+                        ignore_cost_reason: Bloqueo operativo con costo de venta y continuidad.
+                      agent_context:
+                        thread_id: thread_xxx
+                        pressure_state: sos
+                        tags:
+                          - ripley
+                          - infraestructura
+                          - tienda
+                      evidence:
+                        - source_type: gmail_thread
+                          source_id: thread_xxx
+                          thread_id: thread_xxx
+                          title: Punto eléctrico Ripley
+                          excerpt: Seguimos sin electricidad para la vitrina.
+      responses:
+        '200':
+          description: Router response. Backend returns success or error in JSON body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouterResponse'
+  /api/auth-google:
+    get:
+      operationId: connectGmail
+      summary: Start Google OAuth flow for a user
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirects the user to Google OAuth.
+components:
+  schemas:
+    RouterRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - action
+        - userId
+      properties:
+        action:
+          type: string
+          enum:
+            - gmail.profile.get
+            - gmail.search
+            - gmail.search.count
+            - gmail.search.all
+            - gmail.sent.search
+            - gmail.discovery.export
+            - gmail.discovery.batch
+            - gmail.message.get
+            - gmail.thread.get
+            - setup.profile.get
+            - setup.profile.save
+            - pressure.cards.upsert
+        tool:
+          type: string
+          description: Optional alias for action. Prefer action.
+        userId:
+          type: string
+          description: Connected Gmail user identifier.
+        user_id:
+          type: string
+          description: Optional user identifier alias used by PressureBoard payloads.
+        tenant_id:
+          type: string
+          description: Tenant or client identifier.
+        tenantId:
+          type: string
+          description: Optional tenant identifier alias.
+        params:
+          type: object
+          description: Generic params for Gmail, setup, and discovery actions.
+          additionalProperties: true
+        cards:
+          type: array
+          description: Cards to upsert when action is pressure.cards.upsert.
+          items:
+            $ref: '#/components/schemas/PressureCardInput'
+    PressureCardInput:
+      type: object
+      additionalProperties: false
+      required:
+        - card_key
+        - dimension
+        - bucket
+        - title
+      properties:
+        card_key:
+          type: string
+          description: Stable key for idempotent upsert.
+        dimension:
+          type: string
+          enum:
+            - sos
+            - atascados
+            - abiertos
+            - decidir
+            - vigilar
+            - operacion
+            - ejecutiva
+            - comercial
+            - financiera
+            - otra
+        bucket:
+          type: string
+          enum:
+            - sos
+            - atascados
+            - abiertos
+            - decidir
+            - vigilar
+            - urgente
+            - importante
+            - tarea
+        title:
+          type: string
+        subtitle:
+          type: string
+        summary:
+          type: string
+        why_it_matters:
+          type: string
+        what_to_do:
+          type: string
+        severity:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+            - critical
+        status:
+          type: string
+          enum:
+            - active
+            - dismissed
+            - resolved
+        source:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        payload:
+          type: object
+          additionalProperties: true
+        agent_context:
+          type: object
+          additionalProperties: true
+        agent_prompt:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/PressureCardEvidenceInput'
+    PressureCardEvidenceInput:
+      type: object
+      additionalProperties: false
+      required:
+        - source_type
+      properties:
+        source_type:
+          type: string
+          enum:
+            - gmail_thread
+            - gmail_message
+            - review
+            - metric
+            - manual
+        source_id:
+          type: string
+        thread_id:
+          type: string
+        message_id:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    RouterResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        status:
+          type: string
+          enum:
+            - success
+            - error
+        tool:
+          type: string
+        message:
+          type: string
+        data:
+          type:
+            - object
+            - 'null'
+          additionalProperties: true
