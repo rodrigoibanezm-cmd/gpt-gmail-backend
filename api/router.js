@@ -6,6 +6,7 @@ import { getGmailProfile } from "../lib/gmailProfile.js";
 import { searchGmailSent } from "../lib/gmailSent.js";
 import { getGmailThread } from "../lib/gmailThread.js";
 import { exportGmailDiscovery } from "../lib/gmailDiscoveryExport.js";
+import { discoveryBatch } from "../lib/gmailDiscoveryBatch.js";
 import { getSetupProfile, saveSetupProfile } from "../lib/setupProfile.js";
 import { upsertPressureCards } from "../lib/pressureCards.js";
 
@@ -28,10 +29,23 @@ function getParams(body) {
   };
 }
 
+const handlers = {
+  "gmail.profile.get": (userId) => getGmailProfile(userId),
+  "gmail.search": (userId, params) => searchGmail(userId, params),
+  "gmail.search.count": (userId, params) => countGmailSearch(userId, params),
+  "gmail.search.all": (userId, params) => searchGmailAll(userId, params),
+  "gmail.sent.search": (userId, params) => searchGmailSent(userId, params),
+  "gmail.discovery.export": (userId, params) => exportGmailDiscovery(userId, params),
+  "gmail.discovery.batch": (userId, params) => discoveryBatch(userId, params),
+  "gmail.message.get": (userId, params) => getGmailMessage(userId, params),
+  "gmail.thread.get": (userId, params) => getGmailThread(userId, params),
+  "setup.profile.get": (userId) => getSetupProfile(userId),
+  "setup.profile.save": (userId, params) => saveSetupProfile(userId, params),
+  "pressure.cards.upsert": (userId, params) => upsertPressureCards(userId, params)
+};
+
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return sendError(res, null, "Metodo no permitido. Usa POST.");
-  }
+  if (req.method !== "POST") return sendError(res, null, "Metodo no permitido. Usa POST.");
 
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const tool = body.tool || body.action;
@@ -40,75 +54,12 @@ export default async function handler(req, res) {
 
   if (!tool) return sendError(res, null, "Falta tool.");
   if (!userId) return sendError(res, tool, "Falta userId.");
+  if (!handlers[tool]) return sendError(res, tool, "Tool no soportada.");
 
   try {
-    if (tool === "gmail.profile.get") {
-      const result = await getGmailProfile(userId);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.search") {
-      const result = await searchGmail(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.search.count") {
-      const result = await countGmailSearch(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.search.all") {
-      const result = await searchGmailAll(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.sent.search") {
-      const result = await searchGmailSent(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.discovery.export") {
-      const result = await exportGmailDiscovery(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.message.get") {
-      const result = await getGmailMessage(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "gmail.thread.get") {
-      const result = await getGmailThread(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "setup.profile.get") {
-      const result = await getSetupProfile(userId);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "setup.profile.save") {
-      const result = await saveSetupProfile(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    if (tool === "pressure.cards.upsert") {
-      const result = await upsertPressureCards(userId, params);
-      if (!result.ok) return sendError(res, tool, result.message);
-      return sendSuccess(res, tool, result);
-    }
-
-    return sendError(res, tool, "Tool no soportada.");
+    const result = await handlers[tool](userId, params);
+    if (!result.ok) return sendError(res, tool, result.message);
+    return sendSuccess(res, tool, result);
   } catch (error) {
     console.error("api router error", error);
     return sendError(res, tool, "Error interno.");
