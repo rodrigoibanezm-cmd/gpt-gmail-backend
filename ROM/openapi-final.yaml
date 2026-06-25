@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: GPT Gmail Backend Router
-  version: 1.0.0
-  description: Final GPT Action schema for the Gmail MCP router and PressureBoard card ingestion.
+  version: 1.1.0
+  description: Final GPT Action schema for Gmail discovery, Gmail tools, setup profile, and PressureBoard cards.
 servers:
   - url: https://gpt-gmail-backend.vercel.app
 paths:
@@ -17,6 +17,25 @@ paths:
             schema:
               $ref: '#/components/schemas/RouterRequest'
             examples:
+              gmailDiscoveryBatch:
+                value:
+                  action: gmail.discovery.batch
+                  userId: carolina
+                  params:
+                    days: 60
+                    includeInbox: true
+                    includeSent: true
+                    maxThreads: 50
+                    cursor: null
+                    mode: thread_compact
+              gmailThreadGet:
+                value:
+                  action: gmail.thread.get
+                  userId: carolina
+                  params:
+                    threadId: thread_xxx
+                    maxMessages: 10
+                    maxBodyChars: 8000
               pressureCardsUpsert:
                 value:
                   action: pressure.cards.upsert
@@ -25,17 +44,20 @@ paths:
                   user_id: carolina
                   cards:
                     - card_key: ripley-vitrina-sin-electricidad
-                      dimension: operacion
-                      bucket: urgente
+                      dimension: sos
+                      bucket: sos
                       title: Vitrina Ripley sigue sin electricidad
                       subtitle: Bloqueo operativo abierto
                       summary: La tienda sigue sin energía para la vitrina de mascarillas.
-                      why_it_matters: Afecta exhibición, venta y continuidad operacional.
+                      why_it_matters: Si Carolina no lo ve, el bloqueo sigue abierto y la tienda opera sin solución visible.
                       what_to_do: Pedir fecha concreta de solución y responsable.
                       severity: high
-                      payload: {}
+                      payload:
+                        ignore_cost: high
+                        ignore_cost_reason: Bloqueo operativo con costo de venta y continuidad.
                       agent_context:
                         thread_id: thread_xxx
+                        pressure_state: sos
                         tags:
                           - ripley
                           - infraestructura
@@ -46,14 +68,6 @@ paths:
                           thread_id: thread_xxx
                           title: Punto eléctrico Ripley
                           excerpt: Seguimos sin electricidad para la vitrina.
-              gmailThreadGet:
-                value:
-                  action: gmail.thread.get
-                  userId: carolina
-                  params:
-                    threadId: thread_xxx
-                    maxMessages: 10
-                    maxBodyChars: 8000
       responses:
         '200':
           description: Router response. Backend returns success or error in JSON body.
@@ -92,6 +106,7 @@ components:
             - gmail.search.all
             - gmail.sent.search
             - gmail.discovery.export
+            - gmail.discovery.batch
             - gmail.message.get
             - gmail.thread.get
             - setup.profile.get
@@ -114,7 +129,7 @@ components:
           description: Optional tenant identifier alias.
         params:
           type: object
-          description: Generic params for Gmail and setup actions.
+          description: Generic params for Gmail, setup, and discovery actions.
           additionalProperties: true
         cards:
           type: array
@@ -136,6 +151,11 @@ components:
         dimension:
           type: string
           enum:
+            - sos
+            - atascados
+            - abiertos
+            - decidir
+            - vigilar
             - operacion
             - ejecutiva
             - comercial
@@ -144,10 +164,14 @@ components:
         bucket:
           type: string
           enum:
+            - sos
+            - atascados
+            - abiertos
+            - decidir
+            - vigilar
             - urgente
             - importante
             - tarea
-            - sos
         title:
           type: string
         subtitle:
