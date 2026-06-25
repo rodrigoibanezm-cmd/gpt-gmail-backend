@@ -19,13 +19,12 @@ function sendError(res, tool, message) {
 }
 
 function getParams(body) {
-  const params = body.params && typeof body.params === "object" ? body.params : {};
+  const { action, tool, userId, user_id: rawUserId, params, ...rest } = body;
+  const nested = params && typeof params === "object" ? params : {};
   return {
-    ...params,
-    tenant_id: body.tenant_id ?? params.tenant_id,
-    tenantId: body.tenantId ?? params.tenantId,
-    user_id: body.user_id ?? params.user_id,
-    cards: body.cards ?? params.cards
+    ...rest,
+    ...nested,
+    user_id: rest.user_id ?? rawUserId ?? nested.user_id
   };
 }
 
