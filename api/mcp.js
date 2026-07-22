@@ -12,10 +12,13 @@ export default async function handler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (!["POST", "GET", "DELETE"].includes(req.method)) return res.status(405).end();
+
   const server = createNexusGServer();
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined,
-    enableJsonResponse: true });
-  res.on("close", () => { transport.close(); server.close(); });
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true
+  });
+
   try {
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
