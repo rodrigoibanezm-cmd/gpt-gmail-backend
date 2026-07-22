@@ -28,7 +28,39 @@ function getParams(body) {
   };
 }
 
+function getGmailAuthUrl(userId) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+  if (!clientId || !redirectUri) {
+    return { ok: false, message: "OAuth Gmail no configurado." };
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: [
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.settings.basic",
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/drive.readonly"
+    ].join(" "),
+    access_type: "offline",
+    include_granted_scopes: "true",
+    prompt: "consent",
+    state: userId
+  });
+
+  return {
+    ok: true,
+    auth_url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+  };
+}
+
 const handlers = {
+  "gmail.auth.connect": (userId) => getGmailAuthUrl(userId),
   "gmail.profile.get": (userId) => getGmailProfile(userId),
   "gmail.search": (userId, params) => searchGmail(userId, params),
   "gmail.search.count": (userId, params) => countGmailSearch(userId, params),
