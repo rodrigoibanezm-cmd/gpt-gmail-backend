@@ -1,0 +1,529 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusg.local/schemas/operational_identity.v1.schema.json",
+  "title": "operational_identity.v1",
+  "description": "Estado persistible y validado del Motor 1. Integra sin recalcular la salida determinista de identity_signal_extractor.v1 y la salida validada de llm_identity_output.v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "subject_id",
+    "generated_at",
+    "window",
+    "deterministic_output",
+    "llm_output",
+    "coverage",
+    "validation",
+    "questions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "operational_identity.v1"
+    },
+    "tenant_id": {
+      "$ref": "#/$defs/tenant_id"
+    },
+    "subject_id": {
+      "$ref": "#/$defs/entity_id"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window": {
+      "$ref": "#/$defs/window"
+    },
+    "deterministic_output": {
+      "$ref": "#/$defs/identity_signal_extractor_output"
+    },
+    "llm_output": {
+      "$ref": "./llm_identity_output.v1.schema.json"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "validation": {
+      "$ref": "#/$defs/validation"
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/closed_question"
+      }
+    }
+  },
+  "$defs": {
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "evidence_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "evidence_id"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/entity_id"
+        }
+      }
+    },
+    "source_entity_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "entity_type",
+        "entity_id"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "entity_type": {
+          "type": "string",
+          "enum": [
+            "message",
+            "conversation"
+          ]
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entity_id"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messages_total",
+        "messages_sent",
+        "messages_received",
+        "conversations_total",
+        "active_days"
+      ],
+      "properties": {
+        "messages_total": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "messages_sent": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "messages_received": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "conversations_total": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "active_days": {
+          "$ref": "#/$defs/non_negative_integer"
+        }
+      }
+    },
+    "contact_signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "contact_id",
+        "internal_external",
+        "messages_sent_by_subject",
+        "messages_received_by_subject",
+        "conversations_shared",
+        "subject_initiated_conversations",
+        "contact_initiated_conversations",
+        "median_subject_response_minutes",
+        "median_days_between_interactions",
+        "evidence_refs"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "contact_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "internal_external": {
+          "type": "string",
+          "enum": [
+            "internal",
+            "external",
+            "unknown"
+          ]
+        },
+        "messages_sent_by_subject": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "messages_received_by_subject": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "conversations_shared": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "subject_initiated_conversations": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "contact_initiated_conversations": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "median_subject_response_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "median_days_between_interactions": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/evidence_ref"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "evidence_id",
+        "type",
+        "entity_type",
+        "entity_id",
+        "description",
+        "source_entity_refs"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "metric",
+            "message",
+            "conversation"
+          ]
+        },
+        "entity_type": {
+          "type": "string",
+          "enum": [
+            "subject",
+            "contact",
+            "message",
+            "conversation"
+          ]
+        },
+        "entity_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "source_entity_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/source_entity_ref"
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messages_processed",
+        "conversations_processed",
+        "contacts_detected",
+        "contacts_included",
+        "contacts_limit",
+        "date_coverage_ratio",
+        "normalization_error_ratio",
+        "status"
+      ],
+      "properties": {
+        "messages_processed": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "conversations_processed": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "contacts_detected": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "contacts_included": {
+          "$ref": "#/$defs/non_negative_integer"
+        },
+        "contacts_limit": {
+          "const": 10
+        },
+        "date_coverage_ratio": {
+          "$ref": "#/$defs/ratio"
+        },
+        "normalization_error_ratio": {
+          "$ref": "#/$defs/ratio"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "sufficient",
+            "partial",
+            "insufficient"
+          ]
+        }
+      }
+    },
+    "identity_signal_extractor_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "subject_id",
+        "window",
+        "metrics",
+        "contact_signals",
+        "evidence",
+        "coverage"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "identity_signal_extractor.v1"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "window": {
+          "$ref": "#/$defs/window"
+        },
+        "metrics": {
+          "$ref": "#/$defs/metrics"
+        },
+        "contact_signals": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/contact_signal"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/coverage"
+        }
+      }
+    },
+    "validation_issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "field",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "validated_at",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "needs_confirmation",
+            "rejected"
+          ]
+        },
+        "validated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/validation_issue"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/validation_issue"
+          }
+        }
+      }
+    },
+    "question_option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "label"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "closed_question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "question_id",
+        "field",
+        "text",
+        "type",
+        "options"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "question_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "field": {
+          "type": "string",
+          "enum": [
+            "primary_role",
+            "secondary_roles",
+            "relationship_hypotheses",
+            "influence_hypotheses"
+          ]
+        },
+        "contact_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "type": {
+          "const": "single_select"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/question_option"
+          }
+        }
+      }
+    }
+  },
+  "x-backend-validations": [
+    "Inject or verify every tenant_id against the authenticated tenant context; never trust tenant_id from the LLM.",
+    "tenant_id and subject_id must be identical across the root, deterministic_output and llm_output.",
+    "window must be identical to deterministic_output.window.",
+    "coverage must be an exact copy of deterministic_output.coverage; do not recalculate it.",
+    "llm_output must already pass llm_identity_output.v1 schema and cross-validation rules.",
+    "Every contact_id and evidence_id used by llm_output or questions must exist in deterministic_output and belong to the authenticated tenant.",
+    "If validation.status is accepted, validation.errors must be empty and questions must be empty.",
+    "If validation.status is needs_confirmation, questions must contain between one and three items.",
+    "If validation.status is rejected, validation.errors must contain at least one item and the state must not be persisted as active.",
+    "Questions are generated by the backend, never by the LLM.",
+    "This contract integrates existing outputs and must not derive or recalculate metrics, roles, relationships or influence."
+  ]
+}
