@@ -12,7 +12,7 @@
     "primary_role",
     "secondary_roles",
     "relationship_hypotheses",
-    "operational_position",
+    "influence_hypotheses",
     "uncertainties"
   ],
   "properties": {
@@ -42,8 +42,12 @@
         "$ref": "#/$defs/relationship_hypothesis"
       }
     },
-    "operational_position": {
-      "$ref": "#/$defs/operational_position"
+    "influence_hypotheses": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/influence_hypothesis"
+      }
     },
     "uncertainties": {
       "type": "array",
@@ -174,20 +178,21 @@
         }
       }
     },
-    "operational_position_type": {
+    "influence_level": {
       "type": "string",
       "enum": [
-        "execution_node",
-        "coordination_hub",
-        "management_node"
+        "low",
+        "medium",
+        "high"
       ]
     },
-    "operational_position_value": {
+    "influence_hypothesis": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "tenant_id",
-        "position",
+        "contact_id",
+        "influence",
         "confidence",
         "evidence_refs"
       ],
@@ -195,8 +200,11 @@
         "tenant_id": {
           "$ref": "#/$defs/tenant_id"
         },
-        "position": {
-          "$ref": "#/$defs/operational_position_type"
+        "contact_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "influence": {
+          "$ref": "#/$defs/influence_level"
         },
         "confidence": {
           "$ref": "#/$defs/confidence"
@@ -206,23 +214,13 @@
         }
       }
     },
-    "operational_position": {
-      "oneOf": [
-        {
-          "$ref": "#/$defs/operational_position_value"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "uncertainty_field": {
       "type": "string",
       "enum": [
         "primary_role",
         "secondary_roles",
         "relationship_hypotheses",
-        "operational_position"
+        "influence_hypotheses"
       ]
     },
     "uncertainty_reason": {
@@ -231,7 +229,8 @@
         "insufficient_evidence",
         "conflicting_evidence",
         "ambiguous_role",
-        "ambiguous_relationship"
+        "ambiguous_relationship",
+        "ambiguous_influence"
       ]
     },
     "uncertainty": {
@@ -271,5 +270,15 @@
         }
       }
     }
-  }
+  },
+  "x-backend-validations": [
+    "Replace or verify every tenant_id against the authenticated tenant context; never trust the LLM value.",
+    "subject_id must match the subject_id from identity_signal_extractor.v1.",
+    "A contact_id may appear at most once in relationship_hypotheses.",
+    "A contact_id may appear at most once in influence_hypotheses.",
+    "Every contact_id must exist in identity_signal_extractor.v1.contact_signals.",
+    "Every evidence_id must exist in identity_signal_extractor.v1.evidence and belong to the authenticated tenant.",
+    "secondary_roles must not repeat primary_role.",
+    "secondary_roles must be unique."
+  ]
 }
