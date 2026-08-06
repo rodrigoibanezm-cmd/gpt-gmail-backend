@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusg.local/schemas/llm_identity_output.v1.schema.json",
+  "title": "llm_identity_output.v1",
+  "description": "Salida semántica acotada del LLM para Operational Identity Discovery. Solo contiene inferencias respaldadas por evidencia producida por identity_signal_extractor.v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "subject_id",
+    "primary_role",
+    "secondary_roles",
+    "relationship_hypotheses",
+    "operational_position",
+    "uncertainties"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "llm_identity_output.v1"
+    },
+    "tenant_id": {
+      "$ref": "#/$defs/tenant_id"
+    },
+    "subject_id": {
+      "$ref": "#/$defs/entity_id"
+    },
+    "primary_role": {
+      "$ref": "#/$defs/role_hypothesis_nullable"
+    },
+    "secondary_roles": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/role_hypothesis"
+      }
+    },
+    "relationship_hypotheses": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/relationship_hypothesis"
+      }
+    },
+    "operational_position": {
+      "$ref": "#/$defs/operational_position"
+    },
+    "uncertainties": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/uncertainty"
+      }
+    }
+  },
+  "$defs": {
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidence_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "evidence_id"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/entity_id"
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/evidence_ref"
+      }
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "executor",
+        "coordinator",
+        "manager"
+      ]
+    },
+    "role_hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "role",
+        "confidence",
+        "evidence_refs"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidence_refs"
+        }
+      }
+    },
+    "role_hypothesis_nullable": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/role_hypothesis"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "relationship_type": {
+      "type": "string",
+      "enum": [
+        "manager",
+        "peer",
+        "direct_report",
+        "external"
+      ]
+    },
+    "relationship_hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "contact_id",
+        "relationship",
+        "confidence",
+        "evidence_refs"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "contact_id": {
+          "$ref": "#/$defs/entity_id"
+        },
+        "relationship": {
+          "$ref": "#/$defs/relationship_type"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidence_refs"
+        }
+      }
+    },
+    "operational_position_type": {
+      "type": "string",
+      "enum": [
+        "execution_node",
+        "coordination_hub",
+        "management_node"
+      ]
+    },
+    "operational_position_value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "position",
+        "confidence",
+        "evidence_refs"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "position": {
+          "$ref": "#/$defs/operational_position_type"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidence_refs"
+        }
+      }
+    },
+    "operational_position": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/operational_position_value"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "uncertainty_field": {
+      "type": "string",
+      "enum": [
+        "primary_role",
+        "secondary_roles",
+        "relationship_hypotheses",
+        "operational_position"
+      ]
+    },
+    "uncertainty_reason": {
+      "type": "string",
+      "enum": [
+        "insufficient_evidence",
+        "conflicting_evidence",
+        "ambiguous_role",
+        "ambiguous_relationship"
+      ]
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "field",
+        "reason"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/tenant_id"
+        },
+        "field": {
+          "$ref": "#/$defs/uncertainty_field"
+        },
+        "reason": {
+          "$ref": "#/$defs/uncertainty_reason"
+        },
+        "contact_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/entity_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/evidence_ref"
+          }
+        }
+      }
+    }
+  }
+}
