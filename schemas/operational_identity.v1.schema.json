@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nexusg.local/schemas/operational_identity.v1.schema.json",
   "title": "operational_identity.v1",
-  "description": "Estado persistible y validado del Motor 1. Integra sin recalcular la salida determinista de identity_signal_extractor.v1 y la salida validada de llm_identity_output.v1.",
+  "description": "Estado persistible y validado del Motor 1. Integra sin recalcular la salida determinista de identity_signal_extractor.v1 y, cuando corresponde, la salida validada de llm_identity_output.v1.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -38,7 +38,14 @@
       "$ref": "#/$defs/identity_signal_extractor_output"
     },
     "llm_output": {
-      "$ref": "./llm_identity_output.v1.schema.json"
+      "oneOf": [
+        {
+          "$ref": "./llm_identity_output.v1.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "coverage": {
       "$ref": "#/$defs/coverage"
@@ -54,6 +61,63 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "coverage": {
+            "properties": {
+              "status": {
+                "const": "insufficient"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "coverage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "llm_output": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "validation": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "accepted",
+                  "needs_confirmation"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "validation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "llm_output": {
+            "$ref": "./llm_identity_output.v1.schema.json"
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "tenant_id": {
       "type": "string",
@@ -466,6 +530,7 @@
         "tenant_id",
         "question_id",
         "field",
+        "contact_id",
         "text",
         "type",
         "options"
@@ -487,12 +552,14 @@
           ]
         },
         "contact_id": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "maxLength": 256,
-          "pattern": "^[A-Za-z0-9._:-]+$"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/entity_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "text": {
           "type": "string",
@@ -506,23 +573,73 @@
           "type": "array",
           "minItems": 2,
           "maxItems": 4,
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/question_option"
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "relationship_hypotheses",
+                  "influence_hypotheses"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "contact_id": {
+                "$ref": "#/$defs/entity_id"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "primary_role",
+                  "secondary_roles"
+                ]
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "contact_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "x-backend-validations": [
     "Inject or verify every tenant_id against the authenticated tenant context; never trust tenant_id from the LLM.",
-    "tenant_id and subject_id must be identical across the root, deterministic_output and llm_output.",
+    "tenant_id and subject_id must be identical across the root, deterministic_output and any non-null llm_output.",
     "window must be identical to deterministic_output.window.",
     "coverage must be an exact copy of deterministic_output.coverage; do not recalculate it.",
-    "llm_output must already pass llm_identity_output.v1 schema and cross-validation rules.",
+    "coverage.status = insufficient requires llm_output = null and the LLM must not execute.",
+    "validation.status = accepted requires llm_output != null, validation.errors empty and questions empty.",
+    "validation.status = needs_confirmation requires llm_output != null and between one and three questions.",
+    "validation.status = rejected allows llm_output = null, requires at least one validation error and must not persist the state as active.",
+    "Any non-null llm_output must pass llm_identity_output.v1 schema and cross-validation rules.",
     "Every contact_id and evidence_id used by llm_output or questions must exist in deterministic_output and belong to the authenticated tenant.",
-    "If validation.status is accepted, validation.errors must be empty and questions must be empty.",
-    "If validation.status is needs_confirmation, questions must contain between one and three items.",
-    "If validation.status is rejected, validation.errors must contain at least one item and the state must not be persisted as active.",
+    "question_id values must be unique within questions.",
+    "Question option values must be unique within each question; labels should also be unique.",
     "Questions are generated by the backend, never by the LLM.",
     "This contract integrates existing outputs and must not derive or recalculate metrics, roles, relationships or influence."
   ]
