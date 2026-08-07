@@ -7,6 +7,7 @@ import { searchGmailSent } from "../lib/gmailSent.js";
 import { getGmailThread } from "../lib/gmailThread.js";
 import { exportGmailDiscovery } from "../lib/gmailDiscoveryExport.js";
 import { discoveryBatch } from "../lib/gmailDiscoveryBatch.js";
+import { observationProbe } from "../lib/observationProbe.js";
 import { getSetupProfile, saveSetupProfile } from "../lib/setupProfile.js";
 import { upsertPressureCards } from "../lib/pressureCards.js";
 
@@ -68,6 +69,7 @@ const handlers = {
   "gmail.sent.search": (userId, params) => searchGmailSent(userId, params),
   "gmail.discovery.export": (userId, params) => exportGmailDiscovery(userId, params),
   "gmail.discovery.batch": (userId, params) => discoveryBatch(userId, params),
+  "gmail.observation.probe": (userId, params) => observationProbe(userId, params),
   "gmail.message.get": (userId, params) => getGmailMessage(userId, params),
   "gmail.thread.get": (userId, params) => getGmailThread(userId, params),
   "setup.profile.get": (userId) => getSetupProfile(userId),
