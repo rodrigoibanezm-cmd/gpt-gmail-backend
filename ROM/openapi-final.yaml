@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: GPT Gmail Backend Router
-  version: 1.1.2
-  description: GPT Action schema for Gmail discovery, Gmail tools, setup profile, and PressureBoard cards.
+  version: 1.1.3
+  description: GPT Action schema for Gmail discovery, Gmail tools, setup profile, PressureBoard cards, and experimental observation probe.
 
 servers:
   - url: https://gpt-gmail-backend.vercel.app
@@ -11,7 +11,7 @@ paths:
   /api/router:
     post:
       operationId: routeGmailTool
-      summary: Route Gmail, setup profile, and PressureBoard actions through one backend endpoint
+      summary: Route Gmail, setup profile, PressureBoard, and observation probe actions through one backend endpoint
       requestBody:
         required: true
         content:
@@ -59,6 +59,7 @@ components:
             - gmail.sent.search
             - gmail.discovery.export
             - gmail.discovery.batch
+            - gmail.observation.probe
             - gmail.message.get
             - gmail.thread.get
             - setup.profile.get
